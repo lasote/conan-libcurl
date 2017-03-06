@@ -1,8 +1,7 @@
-from conans import ConanFile, ConfigureEnvironment
 import os
-from conans.tools import download
-from conans.tools import unzip, replace_in_file
-from conans import CMake
+
+from conans import tools, CMake, ConanFile, AutoToolsBuildEnvironment
+from conans.tools import download, unzip, replace_in_file
 
 
 class LibCurlConan(ConanFile):
@@ -61,11 +60,7 @@ class LibCurlConan(ConanFile):
         """ Define your project building. You decide the way of building it
             to reuse it later in any other project.
         """
-        env = ConfigureEnvironment(self.deps_cpp_info, self.settings)
-
         if self.settings.os == "Linux" or self.settings.os == "Macos":
-            
-
             suffix = " --without-libidn " if not self.options.with_libidn else "--with-libidn"
             suffix += " --without-libssh2 " if not self.options.with_libssh2 else "--with-libssh2"
             suffix += " --without-librtmp " if not self.options.with_librtmp else "--with-librtmp"
@@ -92,25 +87,23 @@ class LibCurlConan(ConanFile):
         
             if self.options.custom_cacert:
                 suffix += ' --with-ca-bundle=cacert.pem'
-            
+
+            env_build = AutoToolsBuildEnvironment(self)
             # Hack for configure, don't know why fails because it's not able to find libefence.so
-            command_line = env.command_line.replace("-lefence", "")
- 
-            old_str = "-install_name \$rpath/"
-            new_str = "-install_name "
-            replace_in_file("%s/configure" % self.ZIP_FOLDER_NAME, old_str, new_str)
- 
- 
-            configure = "cd %s && %s ./configure %s" % (self.ZIP_FOLDER_NAME, command_line, suffix)
-            self.output.warn(configure)
-            
-            # BUG: https://github.com/curl/curl/commit/bd742adb6f13dc668ffadb2e97a40776a86dc124
-            replace_in_file("%s/configure" % self.ZIP_FOLDER_NAME, 'LDFLAGS="`$PKGCONFIG --libs-only-L zlib` $LDFLAGS"', 'LDFLAGS="$LDFLAGS `$PKGCONFIG --libs-only-L zlib`"')
-            
-            self.output.warn(configure)
-            self.run(configure)
-            self.run("cd %s && env %s make" % (self.ZIP_FOLDER_NAME, env.command_line))
-           
+            if "efence" in env_build.libs:
+                env_build.libs.remove("efence")
+
+            with tools.environment_append(env_build.vars):
+                with tools.chdir(self.ZIP_FOLDER_NAME):
+                    # BUG: https://github.com/curl/curl/commit/bd742adb6f13dc668ffadb2e97a40776a86dc124
+                    replace_in_file("./configure", 'LDFLAGS="`$PKGCONFIG --libs-only-L zlib` $LDFLAGS"',
+                                    'LDFLAGS="$LDFLAGS `$PKGCONFIG --libs-only-L zlib`"')
+                    replace_in_file("./configure", "-install_name \$rpath/", "-install_name ")
+                    configure = "./configure %s" % suffix
+                    self.output.warn(configure)
+                    self.run(configure)
+                    self.run("make")
+
         else:
             # Do not compile curl tool, just library
             conan_magic_lines = '''project(CURL)
