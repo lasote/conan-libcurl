@@ -28,23 +28,27 @@ class LibCurlConan(ConanFile):
     url="http://github.com/lasote/conan-libcurl"
     license="https://curl.haxx.se/docs/copyright.html"
     short_paths=True
-    
-    def config(self):
-        del self.settings.compiler.libcxx
+
+    def config_options(self):
         if self.options.with_openssl:
             if self.settings.os != "Macos" or not self.options.darwin_ssl:
-                self.requires.add("OpenSSL/1.0.2i@lasote/stable", private=False)
                 self.options["OpenSSL"].shared = self.options.shared
-            elif self.settings.os == "Macos" and self.options.darwin_ssl:
-                self.requires.add("zlib/1.2.8@lasote/stable", private=False)
-        else:
-            del self.requires["OpenSSL"]
-            
         if self.settings.os != "Macos":
             try:
                 self.options.remove("darwin_ssl")
             except:
                 pass
+    
+    def configure(self):
+        del self.settings.compiler.libcxx
+        if self.options.with_openssl:
+            if self.settings.os != "Macos" or not self.options.darwin_ssl:
+                self.requires.add("OpenSSL/1.0.2i@lasote/stable", private=False)
+            elif self.settings.os == "Macos" and self.options.darwin_ssl:
+                self.requires.add("zlib/1.2.8@lasote/stable", private=False)
+        else:
+            del self.requires["OpenSSL"]
+            
         self.requires.add("zlib/1.2.8@lasote/stable", private=False)
 
     def source(self):
