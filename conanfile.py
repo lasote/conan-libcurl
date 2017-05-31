@@ -46,9 +46,6 @@ class LibCurlConan(ConanFile):
                 self.requires.add("OpenSSL/1.0.2i@lasote/stable", private=False)
             elif self.settings.os == "Macos" and self.options.darwin_ssl:
                 self.requires.add("zlib/1.2.8@lasote/stable", private=False)
-        else:
-            del self.requires["OpenSSL"]
-            
         self.requires.add("zlib/1.2.8@lasote/stable", private=False)
 
     def source(self):
@@ -102,7 +99,7 @@ class LibCurlConan(ConanFile):
                     # BUG: https://github.com/curl/curl/commit/bd742adb6f13dc668ffadb2e97a40776a86dc124
                     replace_in_file("./configure", 'LDFLAGS="`$PKGCONFIG --libs-only-L zlib` $LDFLAGS"',
                                     'LDFLAGS="$LDFLAGS `$PKGCONFIG --libs-only-L zlib`"')
-                    replace_in_file("./configure", "-install_name \$rpath/", "-install_name ")
+                    replace_in_file("./configure", r"-install_name \$rpath/", "-install_name ")
                     configure = "./configure %s" % suffix
                     self.output.warn(configure)
                     self.run(configure)
@@ -163,9 +160,9 @@ CONAN_BASIC_SETUP()
             if self.settings.os == "Linux":
                 self.cpp_info.libs.extend(["rt"])
                 if self.options.with_libssh2:
-                   self.cpp_info.libs.extend(["ssh2"]) 
+                    self.cpp_info.libs.extend(["ssh2"])
                 if self.options.with_libidn:
-                   self.cpp_info.libs.extend(["idn"]) 
+                    self.cpp_info.libs.extend(["idn"])
                 if self.options.with_librtmp:
                     self.cpp_info.libs.extend(["rtmp"]) 
             if self.settings.os == "Macos":
